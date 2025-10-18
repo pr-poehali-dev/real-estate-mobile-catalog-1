@@ -1,0 +1,29 @@
+{
+  "tests": [
+    {
+      "name": "Get all properties",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Create new property",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "title": "Тестовая квартира",
+        "price": 50000000,
+        "address": "ул. Тестовая, 1",
+        "area": 45,
+        "rooms": 2,
+        "floor": 3,
+        "total_floors": 9,
+        "lat": 40.1776,
+        "lng": 44.5126,
+        "district": "Кентрон",
+        "description": "Тестовое описание"
+      },
+      "expectedStatus": 201
+    }
+  ]
+}

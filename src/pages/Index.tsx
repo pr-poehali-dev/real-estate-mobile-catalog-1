@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Icon from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
+import PropertyMap from '@/components/PropertyMap';
 
 interface Property {
   id: number;
@@ -15,113 +16,49 @@ interface Property {
   area: number;
   rooms: number;
   floor: number;
-  totalFloors: number;
-  image: string;
+  total_floors: number;
+  image_url?: string;
   lat: number;
   lng: number;
   district: string;
+  description?: string;
 }
 
-const mockProperties: Property[] = [
-  {
-    id: 1,
-    title: '2-комнатная квартира в центре',
-    price: 8500000,
-    address: 'ул. Ленина, 45',
-    area: 62,
-    rooms: 2,
-    floor: 5,
-    totalFloors: 12,
-    image: 'https://cdn.poehali.dev/projects/f3b836be-ee04-48cc-8a25-d5c471b3ee81/files/3e7d9ace-5622-47fa-8b8c-f66aee07edd4.jpg',
-    lat: 55.7558,
-    lng: 37.6173,
-    district: 'Центральный'
-  },
-  {
-    id: 2,
-    title: '3-комнатная квартира с видом',
-    price: 12300000,
-    address: 'пр. Мира, 128',
-    area: 85,
-    rooms: 3,
-    floor: 15,
-    totalFloors: 25,
-    image: 'https://cdn.poehali.dev/projects/f3b836be-ee04-48cc-8a25-d5c471b3ee81/files/43841a1e-583a-4f4d-84b7-ec1c68a32c87.jpg',
-    lat: 55.7600,
-    lng: 37.6200,
-    district: 'Северный'
-  },
-  {
-    id: 3,
-    title: '1-комнатная студия',
-    price: 5200000,
-    address: 'ул. Садовая, 12',
-    area: 35,
-    rooms: 1,
-    floor: 3,
-    totalFloors: 9,
-    image: 'https://cdn.poehali.dev/projects/f3b836be-ee04-48cc-8a25-d5c471b3ee81/files/77ca65db-c058-47ec-acb5-25adf11d8a84.jpg',
-    lat: 55.7500,
-    lng: 37.6100,
-    district: 'Западный'
-  },
-  {
-    id: 4,
-    title: '2-комнатная у парка',
-    price: 7800000,
-    address: 'ул. Парковая, 89',
-    area: 58,
-    rooms: 2,
-    floor: 7,
-    totalFloors: 16,
-    image: 'https://cdn.poehali.dev/projects/f3b836be-ee04-48cc-8a25-d5c471b3ee81/files/3e7d9ace-5622-47fa-8b8c-f66aee07edd4.jpg',
-    lat: 55.7520,
-    lng: 37.6150,
-    district: 'Южный'
-  },
-  {
-    id: 5,
-    title: '4-комнатная премиум',
-    price: 18500000,
-    address: 'пл. Победы, 1',
-    area: 120,
-    rooms: 4,
-    floor: 20,
-    totalFloors: 30,
-    image: 'https://cdn.poehali.dev/projects/f3b836be-ee04-48cc-8a25-d5c471b3ee81/files/43841a1e-583a-4f4d-84b7-ec1c68a32c87.jpg',
-    lat: 55.7580,
-    lng: 37.6190,
-    district: 'Центральный'
-  },
-  {
-    id: 6,
-    title: '1-комнатная эконом',
-    price: 4200000,
-    address: 'ул. Новая, 55',
-    area: 32,
-    rooms: 1,
-    floor: 2,
-    totalFloors: 5,
-    image: 'https://cdn.poehali.dev/projects/f3b836be-ee04-48cc-8a25-d5c471b3ee81/files/77ca65db-c058-47ec-acb5-25adf11d8a84.jpg',
-    lat: 55.7480,
-    lng: 37.6080,
-    district: 'Восточный'
-  }
-];
+const API_URL = 'https://functions.poehali.dev/214848f9-00c9-41b2-a027-964de2d33c10';
+
+const districts = ['Кентрон', 'Арабкир', 'Давташен', 'Нор Норк', 'Шенгавит'];
 
 export default function Index() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showMap, setShowMap] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
-  const [priceRange, setPriceRange] = useState([0, 20000000]);
+  const [priceRange, setPriceRange] = useState([0, 200000000]);
   const [areaRange, setAreaRange] = useState([0, 150]);
   const [selectedRooms, setSelectedRooms] = useState<number[]>([]);
   const [selectedDistricts, setSelectedDistricts] = useState<string[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const districts = ['Центральный', 'Северный', 'Западный', 'Восточный', 'Южный'];
   const roomOptions = [1, 2, 3, 4];
 
-  const filteredProperties = mockProperties.filter(property => {
+  useEffect(() => {
+    loadProperties();
+  }, []);
+
+  const loadProperties = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(API_URL);
+      const data = await response.json();
+      setProperties(data);
+    } catch (error) {
+      console.error('Error loading properties:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredProperties = properties.filter(property => {
     const matchesSearch = property.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          property.address.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesPrice = property.price >= priceRange[0] && property.price <= priceRange[1];
@@ -132,9 +69,7 @@ export default function Index() {
     return matchesSearch && matchesPrice && matchesArea && matchesRooms && matchesDistrict;
   });
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ru-RU').format(price) + ' ₽';
-  };
+
 
   const toggleRoom = (room: number) => {
     setSelectedRooms(prev => 
@@ -149,10 +84,14 @@ export default function Index() {
   };
 
   const resetFilters = () => {
-    setPriceRange([0, 20000000]);
+    setPriceRange([0, 200000000]);
     setAreaRange([0, 150]);
     setSelectedRooms([]);
     setSelectedDistricts([]);
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('ru-RU').format(price) + ' ֏';
   };
 
   return (
@@ -203,8 +142,8 @@ export default function Index() {
                     </label>
                     <Slider
                       min={0}
-                      max={20000000}
-                      step={100000}
+                      max={200000000}
+                      step={1000000}
                       value={priceRange}
                       onValueChange={setPriceRange}
                       className="w-full"
@@ -280,26 +219,10 @@ export default function Index() {
 
         {showMap ? (
           <div className="rounded-lg border bg-card overflow-hidden">
-            <div className="relative h-[600px] bg-muted flex items-center justify-center">
-              <div className="text-center space-y-2">
-                <Icon name="MapPin" size={48} className="mx-auto text-muted-foreground" />
-                <p className="text-muted-foreground">Интерактивная карта</p>
-                <p className="text-sm text-muted-foreground">Здесь будет отображаться карта с метками объектов</p>
-              </div>
-              {filteredProperties.map(property => (
-                <div
-                  key={property.id}
-                  className="absolute bg-primary text-primary-foreground rounded-full w-8 h-8 flex items-center justify-center text-xs font-bold cursor-pointer hover:scale-110 transition-transform"
-                  style={{
-                    left: `${(property.lng - 37.6) * 1000 + 50}%`,
-                    top: `${(55.76 - property.lat) * 1000 + 50}%`
-                  }}
-                  onClick={() => setSelectedProperty(property)}
-                >
-                  {property.rooms}
-                </div>
-              ))}
-            </div>
+            <PropertyMap
+              properties={filteredProperties}
+              onPropertyClick={setSelectedProperty}
+            />
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-in">
@@ -310,11 +233,13 @@ export default function Index() {
                 onClick={() => setSelectedProperty(property)}
               >
                 <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-                  <img
-                    src={property.image}
-                    alt={property.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
+                  {property.image_url && (
+                    <img
+                      src={property.image_url}
+                      alt={property.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  )}
                   <div className="absolute top-3 right-3">
                     <Button size="icon" variant="secondary" className="h-8 w-8 rounded-full">
                       <Icon name="Heart" size={16} />
@@ -337,7 +262,7 @@ export default function Index() {
                     </span>
                     <span className="flex items-center gap-1">
                       <Icon name="Building2" size={14} />
-                      {property.floor}/{property.totalFloors}
+                      {property.floor}/{property.total_floors}
                     </span>
                   </div>
                   <div className="pt-2 border-t">
@@ -365,11 +290,13 @@ export default function Index() {
               <SheetTitle>{selectedProperty.title}</SheetTitle>
             </SheetHeader>
             <div className="mt-6 space-y-4">
-              <img
-                src={selectedProperty.image}
-                alt={selectedProperty.title}
-                className="w-full aspect-[16/9] object-cover rounded-lg"
-              />
+              {selectedProperty.image_url && (
+                <img
+                  src={selectedProperty.image_url}
+                  alt={selectedProperty.title}
+                  className="w-full aspect-[16/9] object-cover rounded-lg"
+                />
+              )}
               <div className="space-y-3">
                 <div>
                   <p className="text-3xl font-bold">{formatPrice(selectedProperty.price)}</p>
@@ -386,20 +313,21 @@ export default function Index() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Этаж</p>
-                    <p className="font-semibold">{selectedProperty.floor} из {selectedProperty.totalFloors}</p>
+                    <p className="font-semibold">{selectedProperty.floor} из {selectedProperty.total_floors}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Район</p>
                     <p className="font-semibold">{selectedProperty.district}</p>
                   </div>
                 </div>
-                <div className="space-y-3 pt-2">
-                  <h3 className="font-semibold">Описание</h3>
-                  <p className="text-muted-foreground">
-                    Просторная квартира в отличном состоянии. Развитая инфраструктура, удобная транспортная доступность. 
-                    В шаговой доступности школы, детские сады, магазины и парки.
-                  </p>
-                </div>
+                {selectedProperty.description && (
+                  <div className="space-y-3 pt-2">
+                    <h3 className="font-semibold">Описание</h3>
+                    <p className="text-muted-foreground">
+                      {selectedProperty.description}
+                    </p>
+                  </div>
+                )}
                 <Button className="w-full gap-2" size="lg">
                   <Icon name="Phone" size={18} />
                   Связаться с продавцом

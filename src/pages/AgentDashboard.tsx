@@ -47,6 +47,9 @@ export default function AgentDashboard() {
     district: 'Кентрон',
     description: ''
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const isLoggedIn = localStorage.getItem('agent_logged_in');
@@ -67,11 +70,66 @@ export default function AgentDashboard() {
     }
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadImage = async (): Promise<string | null> => {
+    if (!imageFile) return null;
+
+    setUploading(true);
+    try {
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(imageFile);
+      });
+
+      const base64 = await base64Promise;
+
+      const response = await fetch('https://functions.poehali.dev/72ed81b3-eb96-40b0-aed4-3ef3e8a432dd', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ image: base64 })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.url;
+      }
+      return null;
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      let imageUrl = formData.image_url;
+      
+      if (imageFile) {
+        const uploadedUrl = await uploadImage();
+        if (uploadedUrl) {
+          imageUrl = uploadedUrl;
+        }
+      }
+
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: {
@@ -85,7 +143,7 @@ export default function AgentDashboard() {
           rooms: parseInt(formData.rooms),
           floor: parseInt(formData.floor),
           total_floors: parseInt(formData.total_floors),
-          image_url: formData.image_url || null,
+          image_url: imageUrl || null,
           lat: parseFloat(formData.lat),
           lng: parseFloat(formData.lng),
           district: formData.district,
@@ -113,6 +171,8 @@ export default function AgentDashboard() {
           district: 'Кентрон',
           description: ''
         });
+        setImageFile(null);
+        setImagePreview('');
         loadProperties();
       } else {
         throw new Error('Failed to create property');
@@ -321,13 +381,34 @@ export default function AgentDashboard() {
                   </div>
 
                   <div className="col-span-2 space-y-2">
-                    <Label htmlFor="image_url">URL изображения</Label>
-                    <Input
-                      id="image_url"
-                      value={formData.image_url}
-                      onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                      placeholder="https://..."
-                    />
+                    <Label htmlFor="image">Фотография квартиры</Label>
+                    <div className="flex flex-col gap-3">
+                      <Input
+                        id="image"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="cursor-pointer"
+                      />
+                      {imagePreview && (
+                        <div className="relative w-full h-48 rounded-lg overflow-hidden border">
+                          <img 
+                            src={imagePreview} 
+                            alt="Превью" 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                      <div className="text-sm text-muted-foreground">
+                        или введите URL изображения:
+                      </div>
+                      <Input
+                        id="image_url"
+                        value={formData.image_url}
+                        onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                        placeholder="https://..."
+                      />
+                    </div>
                   </div>
 
                   <div className="col-span-2 space-y-2">
@@ -343,8 +424,8 @@ export default function AgentDashboard() {
                 </div>
 
                 <div className="flex gap-2 pt-4">
-                  <Button type="submit" disabled={loading} className="flex-1">
-                    {loading ? 'Добавление...' : 'Добавить объект'}
+                  <Button type="submit" disabled={loading || uploading} className="flex-1">
+                    {uploading ? 'Загрузка фото...' : loading ? 'Добавление...' : 'Добавить объект'}
                   </Button>
                   <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
                     Отмена

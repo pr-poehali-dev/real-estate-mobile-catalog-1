@@ -1,0 +1,28 @@
+{
+  "tests": [
+    {
+      "name": "Upload image successfully",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "image": "data:image/jpeg;base64,/9j/4AAQSkZJRg=="
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "url": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Handle missing image",
+      "method": "POST",
+      "path": "/",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {
+        "error": "No image provided"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
